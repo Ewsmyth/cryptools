@@ -35,9 +35,24 @@ jobs:
 
       - name: Stage files for package (app, desktop entry, icons)
         run: |
-          mkdir -p packaging/pkgroot/opt/cryptools packaging/pkgroot/usr/bin packaging/pkgroot/usr/share/applications packaging/scripts
-          cp -r *.py requirements.txt 2>/dev/null || true packaging/pkgroot/opt/cryptools/
+          set -euo pipefail
 
+          # ---- staging roots
+          mkdir -p packaging/pkgroot/opt/cryptools \
+                  packaging/pkgroot/usr/bin \
+                  packaging/pkgroot/usr/share/applications \
+                  packaging/pkgroot/usr/share/icons/hicolor \
+                  packaging/scripts
+
+          # ---- app files (explicit)
+          install -m 0644 app.py               packaging/pkgroot/opt/cryptools/app.py
+          install -m 0644 atbash.py            packaging/pkgroot/opt/cryptools/atbash.py
+          install -m 0644 substitution.py      packaging/pkgroot/opt/cryptools/substitution.py
+          install -m 0644 toast.py             packaging/pkgroot/opt/cryptools/toast.py
+          # If you add more modules later, repeat an install line or:
+          # for f in *.py; do install -m 0644 "$f" packaging/pkgroot/opt/cryptools/; done
+
+          # ---- CLI launcher
           cat > packaging/pkgroot/usr/bin/cryptools <<'EOF'
           #!/usr/bin/env bash
           if [ -x /opt/cryptools/.venv/bin/python ]; then
@@ -48,9 +63,10 @@ jobs:
           EOF
           chmod +x packaging/pkgroot/usr/bin/cryptools
 
-          mkdir -p packaging/pkgroot/usr/share/applications
+          # ---- desktop entry
           cp packaging/cryptools.desktop packaging/pkgroot/usr/share/applications/cryptools.desktop
 
+          # ---- icons (hicolor theme)
           install_icon () {
             sz="$1"
             src="assets/icons/cryptools_${sz}x${sz}.png"
@@ -66,6 +82,7 @@ jobs:
           install_icon 32
           install_icon 16
 
+          # ---- postinst: optional venv + refresh caches
           cat > packaging/scripts/postinst <<'EOF'
           #!/usr/bin/env bash
           set -e
@@ -76,8 +93,6 @@ jobs:
             /opt/cryptools/.venv/bin/pip install --upgrade pip
             /opt/cryptools/.venv/bin/pip install -r /opt/cryptools/requirements.txt || true
           fi
-
-          # refresh desktop + icon caches (best-effort)
           if command -v update-desktop-database >/dev/null 2>&1; then
             update-desktop-database -q || true
           fi
@@ -86,6 +101,10 @@ jobs:
           fi
           EOF
           chmod +x packaging/scripts/postinst
+
+          echo "=== Staged files ==="
+          find packaging/pkgroot -type f -maxdepth 6 -print
+
 
       - name: Build .deb
         run: |
