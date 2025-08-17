@@ -2,7 +2,6 @@ name: Build Debian package
 
 on:
   push:
-    branches: [ main ]
     tags: [ 'v*' ]
   workflow_dispatch:
 
@@ -34,9 +33,9 @@ jobs:
           sudo apt-get install -y ruby ruby-dev build-essential
           sudo gem install --no-document fpm
 
-      - name: Stage files for package
+      - name: Stage files for package (app, desktop entry, icons)
         run: |
-          mkdir -p packaging/pkgroot/opt/cryptools packaging/pkgroot/usr/bin packaging/scripts
+          mkdir -p packaging/pkgroot/opt/cryptools packaging/pkgroot/usr/bin packaging/pkgroot/usr/share/applications packaging/scripts
           cp -r *.py requirements.txt 2>/dev/null || true packaging/pkgroot/opt/cryptools/
 
           cat > packaging/pkgroot/usr/bin/cryptools <<'EOF'
@@ -49,6 +48,24 @@ jobs:
           EOF
           chmod +x packaging/pkgroot/usr/bin/cryptools
 
+          mkdir -p packaging/pkgroot/usr/share/applications
+          cp packaging/cryptools.desktop packaging/pkgroot/usr/share/applications/cryptools.desktop
+
+          install_icon () {
+            sz="$1"
+            src="assets/icons/cryptools_${sz}x${sz}.png"
+            dst="packaging/pkgroot/usr/share/icons/hicolor/${sz}x${sz}/apps"
+            if [ -f "$src" ]; then
+              mkdir -p "$dst"
+              cp "$src" "$dst/cryptools.png"
+            fi
+          }
+          install_icon 256
+          install_icon 128
+          install_icon 64
+          install_icon 32
+          install_icon 16
+
           cat > packaging/scripts/postinst <<'EOF'
           #!/usr/bin/env bash
           set -e
@@ -58,6 +75,14 @@ jobs:
             python3 -m venv /opt/cryptools/.venv
             /opt/cryptools/.venv/bin/pip install --upgrade pip
             /opt/cryptools/.venv/bin/pip install -r /opt/cryptools/requirements.txt || true
+          fi
+
+          # refresh desktop + icon caches (best-effort)
+          if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database -q || true
+          fi
+          if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+            gtk-update-icon-cache -f -q /usr/share/icons/hicolor || true
           fi
           EOF
           chmod +x packaging/scripts/postinst
@@ -73,7 +98,9 @@ jobs:
             --after-install scripts/postinst \
             -d "python3 (>= 3.8)" \
             -d "python3-tk" \
-            --description "Crypto tools CLI" \
+            -d "desktop-file-utils" \
+            -d "hicolor-icon-theme" \
+            --description "Crypto tools GUI" \
             --url "https://github.com/Ewsmyth/cryptools" \
             --license "MIT" \
             opt usr

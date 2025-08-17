@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feOffset dx="0" dy="2" result="off"/>
+      <feGaussianBlur in="off" stdDeviation="3" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0.25 0" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow" mode="normal"/>
+    </filter>
+  </defs>
+
+  <!-- Scale group so the icon fills ~70% of the canvas and remains centered -->
+  <g transform="translate(128,128) scale(0.72) translate(-128,-128)">
+
+    <!-- Shackle -->
+    <path d="M84 116V84a44 44 0 0 1 88 0v32h-16V84a28 28 0 1 0-56 0v32H84z"
+          fill="#7A7F85"/>
+
+    <!-- Body -->
+    <g filter="url(#shadow)">
+      <rect x="56" y="112" width="144" height="112" rx="20" fill="#F2C14E" stroke="#C89A2B" stroke-width="4"/>
+      <rect x="68" y="124" width="120" height="88" rx="14" fill="#F7D889" opacity="0.65"/>
+    </g>
+
+    <!-- Cipher wheel / keyhole dial -->
+    <circle cx="128" cy="168" r="44" fill="#8D9299"/>
+    <circle cx="128" cy="168" r="36" fill="#D9DBDE"/>
+    <circle cx="128" cy="168" r="36" fill="none" stroke="#B0B5BB" stroke-width="2"/>
+
+    <!-- Small tick marks to suggest a substitution/caesar ring -->
+    <g stroke="#8D9299" stroke-width="2" stroke-linecap="round">
+      <line x1="128" y1="124" x2="128" y2="130"/>
+      <line x1="160" y1="136" x2="156" y2="140"/>
+      <line x1="172" y1="168" x2="166" y2="168"/>
+      <line x1="160" y1="200" x2="156" y2="196"/>
+      <line x1="128" y1="212" x2="128" y2="206"/>
+      <line x1="96" y1="200" x2="100" y2="196"/>
+      <line x1="84" y1="168" x2="90" y2="168"/>
+      <line x1="96" y1="136" x2="100" y2="140"/>
+    </g>
+
+    <!-- Encoded letters inside the dial (purely decorative) -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+       font-size="14" text-anchor="middle" fill="#3A3F45">
+      <text x="128" y="156">A1D</text>
+      <text x="128" y="172">E7H</text>
+      <text x="128" y="188">QRL</text>
+      <text x="128" y="204">X3K</text>
+    </g>
+  </g>
+</svg>

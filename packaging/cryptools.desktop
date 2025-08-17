@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Cryptools
+Comment=Classical cipher tools (Atbash, Substitution, etc.)
+Exec=/usr/bin/cryptools
+Icon=cryptools
+Terminal=false
+Categories=Utility;Education;
+StartupNotify=true
