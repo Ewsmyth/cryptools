@@ -1,0 +1,91 @@
+name: Build Debian package
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            VERSION="${VERSION#v}"   # strip leading v
+          else
+            VERSION="0.0.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install fpm
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev build-essential
+          sudo gem install --no-document fpm
+
+      - name: Stage files for package
+        run: |
+          # create staging
+          mkdir -p packaging/pkgroot/opt/cryptools packaging/pkgroot/usr/bin packaging/scripts
+
+          # app files
+          cp -r *.py requirements.txt 2>/dev/null || true packaging/pkgroot/opt/cryptools/
+
+          # CLI launcher: `cryptools`
+          cat > packaging/pkgroot/usr/bin/cryptools <<'EOF'
+          #!/usr/bin/env bash
+          if [ -x /opt/cryptools/.venv/bin/python ]; then
+            exec /opt/cryptools/.venv/bin/python /opt/cryptools/app.py "$@"
+          else
+            exec python3 /opt/cryptools/app.py "$@"
+          fi
+          EOF
+          chmod +x packaging/pkgroot/usr/bin/cryptools
+
+          # Post-install: optional venv + deps
+          cat > packaging/scripts/postinst <<'EOF'
+          #!/usr/bin/env bash
+          set -e
+          if [ -f /opt/cryptools/requirements.txt ]; then
+            apt-get update || true
+            apt-get install -y python3-venv python3-pip || true
+            python3 -m venv /opt/cryptools/.venv
+            /opt/cryptools/.venv/bin/pip install --upgrade pip
+            /opt/cryptools/.venv/bin/pip install -r /opt/cryptools/requirements.txt || true
+          fi
+          EOF
+          chmod +x packaging/scripts/postinst
+
+      - name: Build .deb
+        run: |
+          cd packaging
+          fpm -s dir -t deb \
+            -n cryptools \
+            -v "${VERSION}" \
+            --architecture amd64 \
+            -C pkgroot \
+            --after-install scripts/postinst \
+            -d "python3 (>= 3.8)" \
+            --description "Crypto tools CLI" \
+            --url "https://github.com/Ewsmyth/cryptools" \
+            --license "MIT" \
+            opt usr
+          ls -l *.deb
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cryptools-deb-${{ env.VERSION }}
+          path: packaging/*.deb
+
+      - name: Publish GitHub Release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/*.deb
